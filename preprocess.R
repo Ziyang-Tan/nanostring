@@ -41,3 +41,12 @@ ISG <- dat %>%
   rowwise() %>%
   mutate(geomean = exp(mean(log(c_across(columnSet))))) %>%
   select(-columnSet)
+
+# export ISG report
+dir.create('ISG_report', showWarnings = F)
+for (i in 1:dim(dat)[1]){
+  rmarkdown::render('ISG_report_template.Rmd', 
+                    params = list(dat = dat[i,], ISG_score = ISG[i,]), 
+                    output_file = paste0('ISG_report/ISG_',i,'.pdf'))
+}
+

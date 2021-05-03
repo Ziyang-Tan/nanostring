@@ -1,0 +1,55 @@
+---
+title: "ISG_report"
+output: pdf_document
+params:
+  dat: 'dat'
+  ISG_score: 'score'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+options(warn=-1)
+library(dplyr)
+library(tibble)
+library(knitr)
+library(kableExtra)
+```
+
+# Results
+
+```{r}
+
+tmp = params$dat %>% select(-Sample)
+tab1 = tibble(ISGs = colnames(tmp), `Normalized counts` = t(tmp[1,]))
+tmp = params$ISG_score
+tab2 = tibble(`ISG score (geomean)` = tmp$geomean)
+kable(list(tab2, tab1)) %>% kable_styling(latex_options = c("hold_position"))
+```
+
+# Protocol
+
+## Sample processing
+
+Blood drawn in an EDTA tube is, as soon as possible, aliquoted and mixed with PAXgene buffer in a 100:276 blood to PAXgene ratio, i.e. for 1 ml of blood, 2.76 ml of PAXgene buffer are used. After thoroughly mixing, the PAXgene sample is left at RT for a minimum of 1h to ensure blood cell lysis and then frozen at -80ºC until its use for RNA isolation. 
+
+## RNA isolation
+
+The PAXgene sample previously frozen at -80ºC is thawed and equilibrated at RT for 30 min - 1h. Then, the protocol from PreAnalytix for the automated RNA purification from PAXgene samples is followed. Briefly, the sample is centrifuged twice, and the cell pellet resuspended in a buffer provided in the PAXgene kit. The following column-based purification steps for RNA isolation are performed automatically in the QIAcube (liquid handling platform from QIAGEN). Two aliquots of the eluted RNA are taken for the subsequent concentration measurement and integrity check. The remaining sample is frozen at -80ºC until its use for gene expression analyses. 
+
+
+## Interferon gene signature (ISG) expression assay
+
+The gene expression levels of 30 ISG-related genes and 3 housekeeping genes are measured using NanoString Technologies. For this, a hybridization reaction between the mRNA molecules in the sample and a set of oligonucleotide probes, designed to capture the specific genes of interest, is carried out following NanoString’s recommendations. Briefly, around 5 µl of RNA sample is mixed with the oligonucleotide probes and incubated in a thermocycler at 65ºC, with a heated lid at 70ºC, for 20h. Once the reaction time is completed, the sample is loaded into a cartridge designed to be read by Nanostring’s nCounter instrument. The cartridge is then placed inside the nCounter and the gene expression assay is carried out within the instrument, which in the end provides a readout with raw mRNA counts of the genes of study. 
+
+Clinical samples, along with healthy donor reference samples, are run in the nCounter in batches of 12. 
+
+## Gene expression data analysis 
+
+First, a quality check of the data is done by the nSolver software provided by NanoString. Then, as recommended by Nanostring, the data is pre-processed in two different normalization steps: 
+1.	Internal positive control normalization. 
+2.	Housekeeping genes normalization. 
+
+After normalization, two different scores, previously developed by Goldbach-Mansky’s group1, are calculated to provide a summary of the expression levels of all ISGs. 
+
+## References
+-	Kim H, de Jesus AA, Brooks SR, et al. Development of a Validated Interferon Score Using NanoString Technology. J Interferon Cytokine Res. 2018;38(4):171-185. doi:10.1089/jir.2017.0127

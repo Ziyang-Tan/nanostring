@@ -37,3 +37,9 @@ vignettes/*.pdf
 
 # R Environment Variables
 .Renviron
+
+#misc
+.DS_Store
+
+#output
+ISG_report/

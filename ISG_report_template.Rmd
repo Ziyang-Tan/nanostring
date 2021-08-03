@@ -4,6 +4,7 @@ output: pdf_document
 params:
   dat: 'dat'
   ISG_score: 'score'
+  info: 'info'
 ---
 
 ```{r setup, include=FALSE}
@@ -14,6 +15,10 @@ library(tibble)
 library(knitr)
 library(kableExtra)
 ```
+
+Subject ID: `r toString(params$info['Sample ID'][[1]])`
+
+Sample number: `r toString(params$info['Sample info'][[1]])`
 
 # Results
 

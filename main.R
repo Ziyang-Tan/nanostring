@@ -7,7 +7,9 @@ library(ggrepel)
 
 dataDir <- '/Users/tan/nanostring/data'
 infoDir <- '/Users/tan/nanostring/sampleInfo'
-batches <- c('2021-03-30-BRIGGS_1_C7448', 'EXP-21-DN5207','EXP-21-DN5208', 'EXP-21-DN5209')
+batches <- c('EXP-21-DN5206', 'EXP-21-DN5207',
+             'EXP-21-DN5208', 'EXP-21-DN5209',
+             'EXP-21-DN5210')
 #infoPath <- '/Users/tan/nanostring/sampleInfo/2021-03-30-BRIGGS_1_C7448 info.csv'
 #batchName <- '2021-03-30-BRIGGS_1_C7448'
 
@@ -17,19 +19,24 @@ dataList <- lapply(batches, function(x){
   file <- read_csv(dataPath) %>% 
     rename(file_name = `File Name`, gene_name = `...2`, tag_code = `...3`)
   info <- read_csv(infoPath) %>%
-    mutate(`Sample ID` = as.character(`Sample ID`))
+    mutate(`Sample ID` = as.character(`Sample ID`)) %>%
+    mutate(`RNA amount (ng)` = as.character(`RNA amount (ng)`))
   # normalization
   dat <- normalization(file) %>%
     bind_cols(info) %>%
     add_column(batch = rep(x, dim(info)[1]))
 })
 dat <- bind_rows(dataList) %>%
-  filter(`Sample info` != 'Water') %>%
+  filter(Group != 'Background') %>%
   mutate(batch = as.factor(batch))
-dat <- dat %>% mutate(control = grepl('HC', `Sample info`, ignore.case = T) | 
-                        grepl('healthy control', `Sample info`, ignore.case = T)) %>%
+dat <- dat %>% mutate(control = grepl('Healthy relative', Group, ignore.case = T) | 
+                        grepl('Healthy control', Group, ignore.case = T)) %>%
+  mutate(Group = case_when(
+    Group == 'Patient' ~ 'non-interferonopathy patients',
+    TRUE ~ Group
+  )) %>%
   mutate(label = case_when(
-    !control  ~ sub('\\(.*$', '', `Sample info`)
+    Group == 'Interferonopathy'  ~ sub('\\(.*$', '', `Sample info`)
   ))
 
 columnSet <- colnames(dat)[1:30]
@@ -49,32 +56,47 @@ datCorrected <- dat %>% select(-columnSet) %>% bind_cols(corrected)
 
 # calculate ISGs
 
-ISG1 <- geomean_score(datCorrected, columnSet) %>%
+ISG <- geomean_score(datCorrected, columnSet) %>%
   add_column(zscore = (zscore_score(datCorrected, columnSet))$zscore)
 
-ISG2 <- geomean_score(dat, columnSet) %>%
-  add_column(zscore = (zscore_score(dat, columnSet))$zscore)
+#ISG2 <- geomean_score(dat, columnSet) %>%
+#  add_column(zscore = (zscore_score(dat, columnSet))$zscore)
 
-write_csv(ISG1, '/Users/tan/nanostring/nanostring/figures/correct.csv')
-write_csv(ISG2, '/Users/tan/nanostring/nanostring/figures/no correct.csv')
+#write_csv(ISG1, '/Users/tan/nanostring/nanostring/figures/correct.csv')
+#write_csv(ISG2, '/Users/tan/nanostring/nanostring/figures/no correct.csv')
 
 #dat <- dat %>% add_column(geomean_corrected = corrected[,'geomean'],
 #                          zscore_corrected = corrected[,'zscore'])
-ggplot(ISG1, aes(x = geomean, y = zscore, color=batch)) +
+ggplot(ISG, aes(x = geomean, y = zscore, color=Group)) +
   geom_point() +
   geom_text_repel(aes(label = label),
                   force = 2,
                   max.overlaps = 20) +
   labs(title = 'batch correction')
-ggsave('/Users/tan/nanostring/nanostring/figures/correct.pdf')
 
-ggplot(ISG2, aes(x = geomean, y = zscore, color=batch)) +
-  geom_point() +
-  geom_text_repel(aes(label = label),
-                  force = 2,
-                  max.overlaps = 20) +
-  labs(title = 'no batch correction')
-ggsave('/Users/tan/nanostring/nanostring/figures/no correct.pdf')
+#export ISG report
+dir.create('ISG_report', showWarnings = F)
+#for (i in 1:dim(dat)[1]){
+cur_sample = '20210723_30102467480821-01_Sample08_08.RCC'
+extra_label = ''
+#cur_sample = ISG[i,]$Sample
+rmarkdown::render('ISG_report_template.Rmd',
+                  params = list(ISG = ISG, 
+                                extra_label = extra_label,
+                                dat = (dat %>% filter(Sample == cur_sample))[,1:30], 
+                                cur_sample = cur_sample),
+                  output_file = paste0('ISG_report/ISG_',cur_sample,'.pdf'))
+
+
+#ggsave('/Users/tan/nanostring/nanostring/figures/correct.pdf')
+
+# ggplot(ISG2, aes(x = geomean, y = zscore, color=Group)) +
+#   geom_point() +
+#   geom_text_repel(aes(label = label),
+#                   force = 2,
+#                   max.overlaps = 20) +
+#   labs(title = 'no batch correction')
+# ggsave('/Users/tan/nanostring/nanostring/figures/no correct.pdf')
 #  scale_y_continuous(trans = ggallin::pseudolog10_trans)
 #ggsave('/Users/tan/nanostring/nanostring/figures/no correct.pdf')
 

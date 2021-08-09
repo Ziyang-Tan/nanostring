@@ -2,32 +2,55 @@
 title: "ISG_report"
 output: pdf_document
 params:
+  ISG: 'ISG'
   dat: 'dat'
-  ISG_score: 'score'
-  info: 'info'
+  cur_sample: 'cur_sample'
+  extra_label: 'extra_label'
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE)
 options(warn=-1)
 library(dplyr)
+library(ggplot2)
+library(ggrepel)
 library(tibble)
 library(knitr)
 library(kableExtra)
 ```
 
-Subject ID: `r toString(params$info['Sample ID'][[1]])`
+Subject ID: `r toString((params$ISG %>% filter(Sample == cur_sample))['Sample ID'][[1]])`
 
-Sample number: `r toString(params$info['Sample info'][[1]])`
+Sample name: `r toString((params$ISG %>% filter(Sample == cur_sample))['Sample info'][[1]])`
 
 # Results
 
 ```{r}
+cur_sample = params$cur_sample
+extra_label = params$extra_label
 
-tmp = params$dat %>% select(-Sample)
+tmp = (params$ISG) %>% 
+  mutate(cur_label = case_when(Sample == cur_sample ~ `Sample info`, 
+                               Sample == extra_label ~ `Sample info`)) %>%
+  mutate(label = case_when((Sample != cur_sample) & (Sample != extra_label) ~ label))
+colorset = c("#4053d3", "#ddb310", "#b51d14",
+             "#00beff", "#fb49b0", "#00b25d")
+ggplot(tmp, aes(x = geomean, y = zscore, color=Group)) +
+  geom_point() +
+  geom_text_repel(aes(label = label),
+                  force = 2,
+                  max.overlaps = 20) +
+  geom_label_repel(aes(label = cur_label),
+                   box.padding = 3,
+                   force = 1) +
+  scale_color_manual(values=colorset)
+
+tmp = params$dat
 tab1 = tibble(ISGs = colnames(tmp), `Normalized counts` = t(tmp[1,]))
-tmp = params$ISG_score
-tab2 = tibble(`ISG score (geomean)` = tmp$geomean)
+tmp = params$ISG
+tmp = tmp %>% filter(Sample == cur_sample)
+tab2 = tibble(`ISG score (geomean)` = tmp$geomean,
+              `ISG score (zscore)` = tmp$zscore)
 kable(list(tab2, tab1)) %>% kable_styling(latex_options = c("hold_position"))
 ```
 

@@ -48,8 +48,7 @@ geomean_score <- function(dat, columnSet){
 
 # zscore ISG score
 zscore_score <- function(dat, columnSet){
-  hc <- dat %>% filter(grepl('HC', `Sample info`, ignore.case = T) | 
-                         grepl('healthy control', `Sample info`, ignore.case = T)) 
+  hc <- dat %>% filter(control) 
   hcmean <- hc %>%
     summarise(across(columnSet, mean))
   hcstd <- hc %>%
@@ -63,12 +62,4 @@ zscore_score <- function(dat, columnSet){
   ISG <- tibble(Sample = dat$Sample, zscore = zscore)
   return(ISG)
 }
-
-# export ISG report
-#dir.create('ISG_report', showWarnings = F)
-#for (i in 1:dim(dat)[1]){
-#  rmarkdown::render('ISG_report_template.Rmd', 
-#                    params = list(dat = dat[i,], ISG_score = ISG[i,], info = info[i,]), 
-#                    output_file = paste0('ISG_report/ISG_',i,'.pdf'))
-#}
 

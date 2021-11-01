@@ -30,8 +30,8 @@ cur_sample = params$cur_sample
 extra_label = params$extra_label
 
 tmp = (params$ISG) %>% 
-  mutate(cur_label = case_when(Sample == cur_sample ~ `Sample info`, 
-                               Sample == extra_label ~ `Sample info`)) %>%
+  mutate(cur_label = case_when(Sample == cur_sample ~ sub('\\(.*$', '', `Sample info`), 
+                               Sample == extra_label ~ sub('\\(.*$', '', `Sample info`))) %>%
   mutate(label = case_when((Sample != cur_sample) & (Sample != extra_label) ~ label))
 colorset = c("#4053d3", "#ddb310", "#b51d14",
              "#00beff", "#fb49b0", "#00b25d")

@@ -9,7 +9,8 @@ dataDir <- '/Users/tan/nanostring/data'
 infoDir <- '/Users/tan/nanostring/sampleInfo'
 batches <- c('EXP-21-DN5206', 'EXP-21-DN5207',
              'EXP-21-DN5208', 'EXP-21-DN5209',
-             'EXP-21-DN5210')
+             'EXP-21-DN5210', 'EXP-21-DN5211',
+             'EXP-21-DN5212')
 #infoPath <- '/Users/tan/nanostring/sampleInfo/2021-03-30-BRIGGS_1_C7448 info.csv'
 #batchName <- '2021-03-30-BRIGGS_1_C7448'
 
@@ -20,7 +21,8 @@ dataList <- lapply(batches, function(x){
     rename(file_name = `File Name`, gene_name = `...2`, tag_code = `...3`)
   info <- read_csv(infoPath) %>%
     mutate(`Sample ID` = as.character(`Sample ID`)) %>%
-    mutate(`RNA amount (ng)` = as.character(`RNA amount (ng)`))
+    mutate(`RNA amount (ng)` = as.character(`RNA amount (ng)`)) %>%
+    mutate(`RNA vol (µl)` = as.character(`RNA vol (µl)`))
   # normalization
   dat <- normalization(file) %>%
     bind_cols(info) %>%
@@ -32,7 +34,8 @@ dat <- bind_rows(dataList) %>%
 dat <- dat %>% mutate(control = grepl('Healthy relative', Group, ignore.case = T) | 
                         grepl('Healthy control', Group, ignore.case = T)) %>%
   mutate(Group = case_when(
-    Group == 'Patient' ~ 'non-interferonopathy patients',
+    Group == 'Patient' ~ 'Non-interferonopathy patient',
+    Group == 'Interferonopathy patient' ~ 'Interferonopathy',
     TRUE ~ Group
   )) %>%
   mutate(label = case_when(
@@ -77,7 +80,7 @@ ggplot(ISG, aes(x = geomean, y = zscore, color=Group)) +
 #export ISG report
 dir.create('ISG_report', showWarnings = F)
 #for (i in 1:dim(dat)[1]){
-cur_sample = '20210723_30102467480821-01_Sample08_08.RCC'
+cur_sample = '20211029_30102623920622-01_Sample12_12.RCC'
 extra_label = ''
 #cur_sample = ISG[i,]$Sample
 rmarkdown::render('ISG_report_template.Rmd',

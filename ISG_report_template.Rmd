@@ -19,9 +19,9 @@ library(knitr)
 library(kableExtra)
 ```
 
-Subject ID: `r toString((params$ISG %>% filter(Sample == cur_sample))['Sample ID'][[1]])`
+Sample ID: `r toString((params$ISG %>% filter(Sample == cur_sample))['Sample ID'][[1]])`
 
-Sample name: `r toString((params$ISG %>% filter(Sample == cur_sample))['Sample info'][[1]])`
+Subject: `r toString((params$ISG %>% filter(Sample == cur_sample))['Sample info'][[1]])`
 
 # Results
 
@@ -30,13 +30,17 @@ cur_sample = params$cur_sample
 extra_label = params$extra_label
 
 tmp = (params$ISG) %>% 
-  mutate(cur_label = case_when(Sample == cur_sample ~ sub('\\(.*$', '', `Sample info`), 
-                               Sample == extra_label ~ sub('\\(.*$', '', `Sample info`))) %>%
+  mutate(cur_label = case_when((Sample == cur_sample) & (!is.na(label)) ~ label, 
+                               (Sample == cur_sample) & (is.na(label)) ~ `Subject ID`,
+                               (Sample == extra_label) & (!is.na(label)) ~ label, 
+                               (Sample == extra_label) & (is.na(label)) ~ `Subject ID`)) %>%
   mutate(label = case_when((Sample != cur_sample) & (Sample != extra_label) ~ label))
 colorset = c("#4053d3", "#ddb310", "#b51d14",
-             "#00beff", "#fb49b0", "#00b25d")
-ggplot(tmp, aes(x = geomean, y = zscore, color=Group)) +
+             "#00beff", "#fb49b0", "#00b25d",
+             "#693a3a")
+ggplot(tmp, aes(x = geomean, y = zscore, color = Group)) +
   geom_point() +
+  #geom_line(data = tmp %>% filter(!is.na(`Subject ID`))) +
   geom_text_repel(aes(label = label),
                   force = 2,
                   max.overlaps = 20) +

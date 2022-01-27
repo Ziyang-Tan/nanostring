@@ -19,9 +19,23 @@ library(knitr)
 library(kableExtra)
 ```
 
-Sample ID: `r toString((params$ISG %>% filter(Sample == cur_sample))['Sample ID'][[1]])`
+```{r}
+# get the Sample ID and Subject info
+tmp <- params$ISG %>% filter(Sample == cur_sample)
+if (is.na(tmp$Visit)){
+  sample_ID = tmp['Sample ID'][[1]]
+  
+} else {
+  tmp <- params$ISG %>% filter(`Subject ID` == tmp$`Subject ID` & !is.na(Visit))
+  sample_ID = paste0(paste(tmp$Visit,tmp$`Sample ID`, sep=': '), collapse = ', ')
+}
+subject = tmp['Sample info'][[1]]
 
-Subject: `r toString((params$ISG %>% filter(Sample == cur_sample))['Sample info'][[1]])`
+```
+
+Sample ID: `r toString(sample_ID)`
+
+Subject: `r toString(subject)`
 
 # Results
 

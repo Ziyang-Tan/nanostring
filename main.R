@@ -36,6 +36,7 @@ dataList <- lapply(batches, function(x){
   file <- readr::read_csv(dataPath) %>% 
     rename(file_name = `File Name`, gene_name = `...2`, tag_code = `...3`)
   info <- readxl::read_excel(infoPath, sheet = 2, skip = 1) %>%
+    mutate(`Sample info` = gsub('\\(.*$', '', `Sample info`)) %>%
     mutate(`Sample ID` = as.character(`Sample ID`)) %>%
     mutate(`RNA amount (ng)` = as.character(`RNA amount (ng)`)) %>%
     mutate(`RNA vol (µl)` = as.character(`RNA vol (µl)`))
@@ -100,7 +101,6 @@ ggplot(ISG, aes(x = geomean, y = zscore, color=Group)) +
 #export ISG report
 dir.create(exportDir, showWarnings = F)
 lapply(report_samples, function(x){
-  
   cur_sample = x$cur_sample
   extra_label = x$extra_label
   rmarkdown::render('ISG_report_template.Rmd',

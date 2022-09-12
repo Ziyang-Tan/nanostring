@@ -40,8 +40,7 @@ geomean_score <- function(dat, columnSet){
   #columnSet <- raw$gene_name
   ISG <- dat %>%
     rowwise() %>%
-    mutate(geomean = exp(mean(log(c_across(all_of(columnSet)))))) %>%
-    select(-columnSet)
+    mutate(geomean = exp(mean(log(c_across(all_of(columnSet))))))
   return(ISG)
 }
 

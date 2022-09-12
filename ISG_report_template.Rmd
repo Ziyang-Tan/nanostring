@@ -1,11 +1,16 @@
 ---
 title: "ISG_report"
 output: pdf_document
+classoption: table
+header-includes:
+- \usepackage{booktabs}
 params:
-  ISG: 'ISG'
-  dat: 'dat'
   cur_sample: 'cur_sample'
-  extra_label: 'extra_label'
+  ISG: 'ISG'
+  NFkb: 'NFkb'
+  IFNg: 'IFNg'
+  panel_info: 'panel_info'
+  sample_info: 'sample_info'
 ---
 
 ```{r setup, include=FALSE}
@@ -16,42 +21,38 @@ library(ggplot2)
 library(ggrepel)
 library(tibble)
 library(knitr)
-library(kableExtra)
-```
 
-```{r}
-# get the Sample ID and Subject info
-tmp <- params$ISG %>% filter(Sample == cur_sample)
-if (is.na(tmp$Visit)){
-  sample_ID = tmp['Sample ID'][[1]]
-  
-} else {
-  tmp <- params$ISG %>% filter(`Subject ID` == tmp$`Subject ID` & !is.na(Visit))
-  sample_ID = paste0(paste(tmp$Visit,tmp$`Sample ID`, sep=': '), collapse = ', ')
-}
-subject = tmp['Sample info'][[1]]
 
-```
-
-Sample ID: `r toString(sample_ID)`
-
-Subject: `r toString(subject)`
-
-# Results
-
-```{r}
-cur_sample = params$cur_sample
-extra_label = params$extra_label
-
-tmp = (params$ISG) %>% 
-  mutate(cur_label = case_when((Sample == cur_sample) & (!is.na(label)) ~ label, 
-                               (Sample == cur_sample) & (is.na(label)) ~ `Subject ID`,
-                               (Sample == extra_label) & (!is.na(label)) ~ label, 
-                               (Sample == extra_label) & (is.na(label)) ~ `Subject ID`)) %>%
-  mutate(label = case_when((Sample != cur_sample) & (Sample != extra_label) ~ label))
 colorset = c("#4053d3", "#ddb310", "#b51d14",
              "#00beff", "#fb49b0", "#00b25d",
-             "#693a3a")
+             "#693a3a", '#000000')
+cur_sample = params$cur_sample
+ISG = params$ISG
+NFkb = params$NFkb
+IFNg = params$IFNg
+panel_info = params$panel_info
+sample_info = params$sample_info
+```
+
+Patient ID: `r toString(cur_sample)`
+
+Contact: `r toString(unique(sample_info$Contact))`
+
+```{r}
+require(kableExtra)
+kbl(t(sample_info %>% select(-Contact)), booktabs = T) %>%
+  kable_styling(latex_options = c('hold_position', 'striped'))
+```
+
+\newpage
+
+# Results (ISG)
+
+```{r}
+# ISG
+tmp = ISG %>%
+  mutate(cur_label = if_else(`Sample ID` %in% sample_info$`Sample ID`, paste0(`Subject ID`, '_Visit', Visit), NA))
+
 ggplot(tmp, aes(x = geomean, y = zscore, color = Group)) +
   geom_point() +
   #geom_line(data = tmp %>% filter(!is.na(`Subject ID`))) +
@@ -59,18 +60,90 @@ ggplot(tmp, aes(x = geomean, y = zscore, color = Group)) +
                   force = 2,
                   max.overlaps = 20) +
   geom_label_repel(aes(label = cur_label),
-                   box.padding = 3,
-                   force = 1) +
+                   box.padding = 5,
+                   force = 1.5) +
   scale_color_manual(values=colorset)
 
-tmp = params$dat
-tab1 = tibble(ISGs = colnames(tmp), `Normalized counts` = t(tmp[1,]))
-tmp = params$ISG
-tmp = tmp %>% filter(Sample == cur_sample)
-tab2 = tibble(`ISG score (geomean)` = tmp$geomean,
-              `ISG score (zscore)` = tmp$zscore)
-kable(list(tab2, tab1)) %>% kable_styling(latex_options = c("hold_position"))
+tmp <- ISG %>% filter(`Sample ID` %in% sample_info$`Sample ID`)
+tab <- rbind(
+  t(tmp[,c('geomean', 'zscore')]),
+  t(tmp[,na.omit(panel_info$`ISG score`)])
+)
+colnames(tab) <- paste0(tmp$`Subject ID`, '_Visit', tmp$Visit)
+tab <- round(tab)
+
+require(kableExtra)
+kbl(tab, booktabs = T, caption = 'ISG scores and the panel') %>%
+  kable_styling(latex_options = c('hold_position', 'striped'), stripe_index=c(1,2))
 ```
+
+\newpage
+
+# Results (NFkb)
+
+```{r}
+# NFkb
+tmp = NFkb %>%
+  mutate(cur_label = if_else(`Sample ID` %in% sample_info$`Sample ID`, paste0(`Subject ID`, '_Visit', Visit), NA))
+
+ggplot(tmp, aes(x = geomean, y = zscore, color = Group)) +
+  geom_point() +
+  #geom_line(data = tmp %>% filter(!is.na(`Subject ID`))) +
+  geom_text_repel(aes(label = label),
+                  force = 2,
+                  max.overlaps = 20) +
+  geom_label_repel(aes(label = cur_label),
+                   box.padding = 5,
+                   force = 1.5) +
+  scale_color_manual(values=colorset)
+
+tmp <- NFkb %>% filter(`Sample ID` %in% sample_info$`Sample ID`)
+tab <- rbind(
+  t(tmp[,c('geomean', 'zscore')]),
+  t(tmp[,na.omit(panel_info$`NF-kB score`)])
+)
+colnames(tab) <- paste0(tmp$`Subject ID`, '_Visit', tmp$Visit)
+tab <- round(tab)
+
+require(kableExtra)
+kbl(tab, booktabs = T, caption = 'NFkb scores and the panel') %>%
+  kable_styling(latex_options = c('hold_position', 'striped'), stripe_index=c(1,2))
+```
+
+\newpage
+
+# Results (IFNg)
+
+```{r}
+# IFNg
+tmp = IFNg %>%
+  mutate(cur_label = if_else(`Sample ID` %in% sample_info$`Sample ID`, paste0(`Subject ID`, '_Visit', Visit), NA))
+
+ggplot(tmp, aes(x = geomean, y = zscore, color = Group)) +
+  geom_point() +
+  #geom_line(data = tmp %>% filter(!is.na(`Subject ID`))) +
+  geom_text_repel(aes(label = label),
+                  force = 2,
+                  max.overlaps = 20) +
+  geom_label_repel(aes(label = cur_label),
+                   box.padding = 5,
+                   force = 1.5) +
+  scale_color_manual(values=colorset)
+
+tmp <- IFNg %>% filter(`Sample ID` %in% sample_info$`Sample ID`)
+tab <- rbind(
+  t(tmp[,c('geomean', 'zscore')]),
+  t(tmp[,na.omit(panel_info$`IFN-g Score`)])
+)
+colnames(tab) <- paste0(tmp$`Subject ID`, '_Visit', tmp$Visit)
+tab <- round(tab)
+
+require(kableExtra)
+kbl(tab, booktabs = T, caption = 'IFNg scores and the panel') %>%
+  kable_styling(latex_options = c('hold_position', 'striped'), stripe_index=c(1,2))
+```
+
+\newpage
 
 # Protocol
 

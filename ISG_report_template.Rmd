@@ -1,6 +1,8 @@
 ---
 title: "ISG_report"
-output: pdf_document
+output: 
+  pdf_document:
+    latex_engine: xelatex
 classoption: table
 header-includes:
 - \usepackage{booktabs}
@@ -32,6 +34,11 @@ NFkb = params$NFkb
 IFNg = params$IFNg
 panel_info = params$panel_info
 sample_info = params$sample_info
+
+show_ISG = TRUE
+show_NFkb = cur_sample %in% NFkb$`Subject ID`
+show_IFNg = cur_sample %in% IFNg$`Subject ID`
+
 ```
 
 Patient ID: `r toString(cur_sample)`
@@ -48,23 +55,41 @@ kbl(t(sample_info %>% select(-Contact)), booktabs = T) %>%
 
 # Results (ISG)
 
-```{r}
+```{r, eval=show_ISG}
 # ISG
-tmp = ISG %>%
-  mutate(cur_label = if_else(`Sample ID` %in% sample_info$`Sample ID`, paste0(`Subject ID`, '_Visit', Visit), NA))
+# tmp = ISG %>%
+#   mutate(cur_label = if_else(`Subject ID` == cur_sample, paste0(`Subject ID`, '_', Visit), NA))
+# ggplot(tmp, aes(x = geomean, y = zscore, color = Group)) +
+#   geom_point() +
+#   #geom_line(data = tmp %>% filter(!is.na(`Subject ID`))) +
+#   geom_text_repel(aes(label = label),
+#                   force = 2,
+#                   max.overlaps = 20) +
+#   geom_label_repel(aes(label = cur_label),
+#                    box.padding = 5,
+#                    force = 1.5) +
+#   scale_color_manual(values=colorset)
 
-ggplot(tmp, aes(x = geomean, y = zscore, color = Group)) +
-  geom_point() +
-  #geom_line(data = tmp %>% filter(!is.na(`Subject ID`))) +
+tmp <- ISG %>% filter(Group != 'Patients' | `Subject ID` == cur_sample) %>%
+  mutate(label = if_else(`Subject ID` == cur_sample, paste(`Subject ID`, Visit, sep='_'), NA),
+         Group = case_when(
+           `Subject ID` == cur_sample ~ 'Patient',
+           `Subject ID` != cur_sample | is.na(`Subject ID`) ~ Group # in this case for new diagnosis we only need to add to 'Group' 
+         ))
+
+set.seed(42)
+ggplot(tmp, aes(x = Group, y = geomean, color=Group)) +
+  geom_jitter(width = 0.25) +
   geom_text_repel(aes(label = label),
                   force = 2,
-                  max.overlaps = 20) +
-  geom_label_repel(aes(label = cur_label),
-                   box.padding = 5,
-                   force = 1.5) +
-  scale_color_manual(values=colorset)
+                  max.overlaps = 20,
+                  segment.color = 'transparent') +
+  theme_bw()  +
+  theme(legend.position='none',
+        axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) +
+  scale_y_continuous(trans='log1p')
 
-tmp <- ISG %>% filter(`Sample ID` %in% sample_info$`Sample ID`)
+tmp <- ISG %>% filter(`Subject ID` == cur_sample)
 tab <- rbind(
   t(tmp[,c('geomean', 'zscore')]),
   t(tmp[,na.omit(panel_info$`ISG score`)])
@@ -80,24 +105,31 @@ kbl(tab, booktabs = T, caption = 'ISG scores and the panel') %>%
 \newpage
 
 # Results (NFkb)
+`r if(!show_NFkb){"not in the panel"}`
 
-```{r}
+```{r, eval=show_NFkb}
 # NFkb
-tmp = NFkb %>%
-  mutate(cur_label = if_else(`Sample ID` %in% sample_info$`Sample ID`, paste0(`Subject ID`, '_Visit', Visit), NA))
 
-ggplot(tmp, aes(x = geomean, y = zscore, color = Group)) +
-  geom_point() +
-  #geom_line(data = tmp %>% filter(!is.na(`Subject ID`))) +
+tmp <- NFkb %>% filter(Group != 'Patients' | `Subject ID` == cur_sample) %>%
+  mutate(label = if_else(`Subject ID` == cur_sample, paste(`Subject ID`, Visit, sep='_'), NA),
+         Group = case_when(
+           `Subject ID` == cur_sample ~ 'Patient',
+           `Subject ID` != cur_sample | is.na(`Subject ID`) ~ Group # in this case for new diagnosis we only need to add to 'Group' 
+         ))
+
+set.seed(42)
+ggplot(tmp, aes(x = Group, y = geomean, color=Group)) +
+  geom_jitter(width = 0.25) +
   geom_text_repel(aes(label = label),
                   force = 2,
-                  max.overlaps = 20) +
-  geom_label_repel(aes(label = cur_label),
-                   box.padding = 5,
-                   force = 1.5) +
-  scale_color_manual(values=colorset)
+                  max.overlaps = 20,
+                  segment.color = 'transparent') +
+  theme_bw()  +
+  theme(legend.position='none',
+        axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) +
+  scale_y_continuous(trans='log1p')
 
-tmp <- NFkb %>% filter(`Sample ID` %in% sample_info$`Sample ID`)
+tmp <- NFkb %>% filter(`Subject ID` == cur_sample)
 tab <- rbind(
   t(tmp[,c('geomean', 'zscore')]),
   t(tmp[,na.omit(panel_info$`NF-kB score`)])
@@ -108,29 +140,38 @@ tab <- round(tab)
 require(kableExtra)
 kbl(tab, booktabs = T, caption = 'NFkb scores and the panel') %>%
   kable_styling(latex_options = c('hold_position', 'striped'), stripe_index=c(1,2))
+
+
 ```
 
 \newpage
 
 # Results (IFNg)
+`r if(!show_IFNg){"not in the panel"}`
 
-```{r}
+```{r, eval=show_IFNg}
 # IFNg
-tmp = IFNg %>%
-  mutate(cur_label = if_else(`Sample ID` %in% sample_info$`Sample ID`, paste0(`Subject ID`, '_Visit', Visit), NA))
 
-ggplot(tmp, aes(x = geomean, y = zscore, color = Group)) +
-  geom_point() +
-  #geom_line(data = tmp %>% filter(!is.na(`Subject ID`))) +
+tmp <- IFNg %>% filter(Group != 'Patients' | `Subject ID` == cur_sample) %>%
+  mutate(label = if_else(`Subject ID` == cur_sample, paste(`Subject ID`, Visit, sep='_'), NA),
+         Group = case_when(
+           `Subject ID` == cur_sample ~ 'Patient',
+           `Subject ID` != cur_sample | is.na(`Subject ID`) ~ Group # in this case for new diagnosis we only need to add to 'Group' 
+         ))
+
+set.seed(42)
+ggplot(tmp, aes(x = Group, y = geomean, color=Group)) +
+  geom_jitter(width = 0.25) +
   geom_text_repel(aes(label = label),
                   force = 2,
-                  max.overlaps = 20) +
-  geom_label_repel(aes(label = cur_label),
-                   box.padding = 5,
-                   force = 1.5) +
-  scale_color_manual(values=colorset)
+                  max.overlaps = 20,
+                  segment.color = 'transparent') +
+  theme_bw()  +
+  theme(legend.position='none',
+        axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) +
+  scale_y_continuous(trans='log1p')
 
-tmp <- IFNg %>% filter(`Sample ID` %in% sample_info$`Sample ID`)
+tmp <- IFNg %>% filter(`Subject ID` == cur_sample)
 tab <- rbind(
   t(tmp[,c('geomean', 'zscore')]),
   t(tmp[,na.omit(panel_info$`IFN-g Score`)])
@@ -141,6 +182,7 @@ tab <- round(tab)
 require(kableExtra)
 kbl(tab, booktabs = T, caption = 'IFNg scores and the panel') %>%
   kable_styling(latex_options = c('hold_position', 'striped'), stripe_index=c(1,2))
+
 ```
 
 \newpage
@@ -149,26 +191,25 @@ kbl(tab, booktabs = T, caption = 'IFNg scores and the panel') %>%
 
 ## Sample processing
 
-Blood drawn in an EDTA tube is, as soon as possible, aliquoted and mixed with PAXgene buffer in a 100:276 blood to PAXgene ratio, i.e. for 1 ml of blood, 2.76 ml of PAXgene buffer are used. After thoroughly mixing, the PAXgene sample is left at RT for a minimum of 1h to ensure blood cell lysis and then frozen at -80ºC until its use for RNA isolation. 
+Blood drawn in an EDTA tube is, as soon as possible, aliquoted and mixed with PAXgene buffer in a 100:276 blood to PAXgene ratio, i.e. for 1 ml of blood, 2.76 ml of PAXgene buffer are used. After thoroughly mixing, the PAXgene sample is left at RT for a minimum of 1h to ensure blood cell lysis and then frozen at -80ºC until its use for RNA isolation.
 
 ## RNA isolation
 
-The PAXgene sample previously frozen at -80ºC is thawed and equilibrated at RT for 30 min - 1h. Then, the protocol from PreAnalytix for the automated RNA purification from PAXgene samples is followed. Briefly, the sample is centrifuged twice, and the cell pellet resuspended in a buffer provided in the PAXgene kit. The following column-based purification steps for RNA isolation are performed automatically in the QIAcube (liquid handling platform from QIAGEN). Two aliquots of the eluted RNA are taken for the subsequent concentration measurement and integrity check. The remaining sample is frozen at -80ºC until its use for gene expression analyses. 
+The PAXgene sample previously frozen at -80ºC is thawed and equilibrated at RT for 30 min - 1h. Then, the protocol from PreAnalytix for the automated RNA purification from PAXgene samples is followed. Briefly, the sample is centrifuged twice, and the cell pellet resuspended in a buffer provided in the PAXgene kit. The following column-based purification steps for RNA isolation are performed automatically in the QIAcube (liquid handling platform from QIAGEN). Two aliquots of the eluted RNA are taken for the subsequent concentration measurement and integrity check. The remaining sample is frozen at -80ºC until its use for gene expression analyses.
 
+## Gene expression analyses
 
-## Interferon gene signature (ISG) expression assay
+The gene expression levels of 56 immune-related genes and 3 housekeeping genes are measured using NanoString Technologies. For this, a hybridization reaction between the mRNA molecules in the sample and a set of oligonucleotide probes, designed to capture the specific genes of interest, is carried out following NanoString's recommendations. Briefly, around 5 µl of RNA sample are mixed with the oligonucleotide probes and incubated in a thermocycler at 65ºC, with a heated lid at 70ºC, for 20h. Once the reaction time is completed, the sample is loaded into a cartridge designed to be read by NanoString's nCounter instrument. The cartridge is then placed inside the nCounter and the gene expression assay is carried out within the instrument, which in the end provides a readout with raw mRNA counts of the genes of study.
 
-The gene expression levels of 30 ISG-related genes and 3 housekeeping genes are measured using NanoString Technologies. For this, a hybridization reaction between the mRNA molecules in the sample and a set of oligonucleotide probes, designed to capture the specific genes of interest, is carried out following NanoString’s recommendations. Briefly, around 5 µl of RNA sample is mixed with the oligonucleotide probes and incubated in a thermocycler at 65ºC, with a heated lid at 70ºC, for 20h. Once the reaction time is completed, the sample is loaded into a cartridge designed to be read by Nanostring’s nCounter instrument. The cartridge is then placed inside the nCounter and the gene expression assay is carried out within the instrument, which in the end provides a readout with raw mRNA counts of the genes of study. 
+Clinical samples, along with healthy donor reference samples, are run in the nCounter in batches of 12.
 
-Clinical samples, along with healthy donor reference samples, are run in the nCounter in batches of 12. 
+## Gene expression data analysis
 
-## Gene expression data analysis 
+First, a quality check of the data is done by the nSolver software provided by NanoString. Then, as recommended by Nanostring, the data is pre-processed in two different normalization steps: 1. Internal positive control normalization. 2. Housekeeping genes normalization.
 
-First, a quality check of the data is done by the nSolver software provided by NanoString. Then, as recommended by Nanostring, the data is pre-processed in two different normalization steps: 
-1.	Internal positive control normalization. 
-2.	Housekeeping genes normalization. 
-
-After normalization, two different scores, previously developed by Goldbach-Mansky’s group1, are calculated to provide a summary of the expression levels of all ISGs. 
+After normalization, two different scores (Z-score and geomean score) are calculated to provide a summary of the expression levels of type I IFN--stimulated genes (ISG scores), NF-kB--regulated genes (NF-kB scores) and type II IFN--regulated genes (IFN-gamma scores)1,2. Of note, NanoString's products, along with any assays developed with its components are intended for research purposes only.
 
 ## References
--	Kim H, de Jesus AA, Brooks SR, et al. Development of a Validated Interferon Score Using NanoString Technology. J Interferon Cytokine Res. 2018;38(4):171-185. doi:10.1089/jir.2017.0127
+
+1.  Kim, H., de Jesus, A. A., Brooks, S. R., Liu, Y., Huang, Y., VanTries, R., ... & Goldbach-Mansky, R. (2018). Development of a validated interferon score using NanoString technology. Journal of Interferon & Cytokine Research, 38(4), 171-185.
+2.  Abers, M. S., Delmonte, O. M., Ricotta, E. E., Fintzi, J., Fink, D. L., de Jesus, A. A. A., ... & NIAID COVID-19 Consortium. (2021). An immune-based biomarker signature is associated with mortality in COVID-19 patients. JCI insight, 6(1).

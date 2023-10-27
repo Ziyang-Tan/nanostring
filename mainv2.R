@@ -12,22 +12,20 @@ panelInfoPath <- '/Users/tan/nanostring/doc/New ISG extended panel - for Nanostr
 sampleInfoPath <- '/Users/tan/Library/CloudStorage/OneDrive-KI.SE/ISG nanostring/sample info/sample and physician info.xlsx'
 metaInfoPath <- '/Users/tan/Library/CloudStorage/OneDrive-KI.SE/ISG nanostring/sample info/physician and batch info.xlsx'
 
-exportDir <- '/Users/tan/Library/CloudStorage/OneDrive-KI.SE/ISG nanostring/ISG reports'
-
 # new panel
 batches <- c(
   'EXP-21-DN5206', 'EXP-21-DN5207','EXP-21-DN5208','EXP-21-DN5209','EXP-21-DN5210','EXP-21-DN5211','EXP-21-DN5212','EXP-21-DN5214',
   'EXP-22-DN5215', 'EXP-22-DN5218', 'EXP-22-DN5219', 'EXP-22-DN5221', 'EXP-22-DN5227', 'EXP-22-run20', 'EXP-22-run21',
-  'EXP-23-DN5231'
+  'EXP-23-DN5230', 'EXP-23-DN5231', 'EXP-23-DN5232', 'EXP-23-DN5233'
 )
 
 panel_info <- readxl::read_excel(path = panelInfoPath, sheet = 2) %>% filter(type=='Endogenous')
 
-sample_info <- left_join(
+sample_info_all <- left_join(
   readxl::read_excel(sampleInfoPath, sheet = 1),
   readxl::read_excel(sampleInfoPath, sheet = 2),
   by = 'Referring physician'
-)
+) %>% mutate(`Referring physician` = if_else(is.na(`Referring physician`), 'unknown', `Referring physician`))
 
 dataList <- lapply(batches, function(x){
   #x = batches[1]
@@ -55,8 +53,18 @@ dat <- bind_rows(dataList) %>%
 columnSet <- unique(unlist(panel_info %>% select(-type))) %>% na.omit()
 dat <- dat %>% 
   mutate(control = grepl('Healthy relative', Group, ignore.case = T) | 
-           grepl('Healthy control', Group, ignore.case = T)) %>%
-  mutate(across(all_of(columnSet), ~./`RNA amount (ng)`*100)) # normalize by the amount of RNA
+           grepl('Healthy control', Group, ignore.case = T),
+         across(all_of(columnSet), ~./`RNA amount (ng)`*100),
+         unique_ID = paste0(`Subject ID`, '_', Visit))
+
+# deal with replicates, remove for now
+dat <- rbind(dat %>% filter(is.na(`Subject ID`)),
+             dat %>% filter(!is.na(`Subject ID`)) %>% distinct(`Subject ID`, Visit, .keep_all =TRUE)
+)
+
+
+
+# normalize by the amount of RNA
 
 # batch correction
 
@@ -94,38 +102,32 @@ IFNg <- geomean_score(datCorrectedFiltered, IFNg_panel) %>%
 
 # visualize
 
-cur_patient = 'ISG-34'
-df <- ISG %>% filter(Group != 'Patients' | `Subject ID` == cur_patient) %>%
-  mutate(label = if_else(`Subject ID` == cur_patient, paste(`Subject ID`, Visit, sep='_'), NA),
-         Group = case_when(
-           `Subject ID` == cur_patient ~ 'Patient',
-           `Subject ID` != cur_patient | is.na(`Subject ID`) ~ Group # in this case for new diagnosis we only need to add to 'Group' 
-         ),
-         version = if_else(batch %in% c('EXP-21-DN5206', 'EXP-21-DN5207','EXP-21-DN5208','EXP-21-DN5209',
-                                        'EXP-21-DN5210','EXP-21-DN5211','EXP-21-DN5212','EXP-21-DN5214'), 'v1', 'v2'))
-set.seed(42)
-
-ggplot(df, aes(x = Group, y = geomean, color=version)) +
-  geom_jitter(width = 0.25) +
-  geom_text_repel(aes(label = label),
-                  force = 2,
-                  max.overlaps = 20) +
-  theme_bw()  +
-  theme(# legend.position='none',
-    axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) +
-  scale_y_continuous(trans='pseudo_log',
-                     n.breaks=5)
+# cur_patient = 'ISG-34'
+# df <- ISG %>% filter(!(Group %in% c('Patients', 'Patient IFN stimulation')) | `Subject ID` == cur_patient) %>%
+#   mutate(label = if_else(`Subject ID` == cur_patient, paste(`Subject ID`, Visit, sep='_'), NA),
+#          version = if_else(batch %in% c('EXP-21-DN5206', 'EXP-21-DN5207','EXP-21-DN5208','EXP-21-DN5209',
+#                                         'EXP-21-DN5210','EXP-21-DN5211','EXP-21-DN5212','EXP-21-DN5214'), 'v1', 'v2'))
+# set.seed(42)
+# 
+# ggplot(df, aes(x = Group, y = geomean, color=version)) +
+#   geom_jitter(width = 0.25) +
+#   geom_text_repel(aes(label = label),
+#                   force = 2,
+#                   max.overlaps = 20) +
+#   theme_bw()  +
+#   theme(# legend.position='none',
+#     axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) +
+#   scale_y_continuous(trans='pseudo_log',
+#                      n.breaks=5)
 
 
+# batch export ISG report
 
-#export ISG report
-report_samples <- unique(sample_info$`Patient ID`)
-tmp <- sample_info %>% mutate(`Referring physician` = if_else(is.na(`Referring physician`), 'unknown', `Referring physician`))
-#report_samples <- c('ISG-14')
-for (folder in unique(tmp$`Referring physician`)){
+exportDir <- '/Users/tan/Library/CloudStorage/OneDrive-KI.SE/ISG nanostring/ISG reports test'
+for (folder in unique(sample_info_all$`Referring physician`)){
   expath <- file.path(exportDir, folder)
   dir.create(expath, showWarnings = F)
-  report_samples <- tmp %>% filter(`Referring physician` == folder) %>% select(`Patient ID`) %>% distinct()
+  report_samples <- sample_info_all %>% filter(`Referring physician` == folder) %>% select(`Patient ID`) %>% distinct() %>% unlist()
   lapply(report_samples, function(cur_sample){
     # cur_sample = 'ISG-18'
     #cur_data <- dat %>% filter(grepl(cur_sample, `Sample info`))
@@ -135,9 +137,18 @@ for (folder in unique(tmp$`Referring physician`)){
                                     IFNg = IFNg,
                                     panel_info = panel_info, 
                                     cur_sample = cur_sample,
-                                    sample_info = tmp %>% filter(`Patient ID` == cur_sample)),
+                                    sample_info = sample_info_all %>% filter(`Patient ID` == cur_sample)),
                       output_file = paste0(expath, '/',cur_sample,'.pdf'))
   })
 }
 
+# test
+rmarkdown::render('ISG_report_template.Rmd',
+                  params = list(ISG = ISG,
+                                NFkb = NFkb,
+                                IFNg = IFNg,
+                                panel_info = panel_info,
+                                cur_sample = 'ISG-6',
+                                sample_info = sample_info_all %>% filter(`Patient ID` == 'ISG-6')),
+                  output_file = paste0('/Users/tan/Library/CloudStorage/OneDrive-KI.SE/ISG nanostring/ISG reports test/test3.pdf'))
 

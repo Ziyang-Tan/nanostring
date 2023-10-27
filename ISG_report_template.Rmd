@@ -16,18 +16,18 @@ params:
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = FALSE)
-options(warn=-1)
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
 library(dplyr)
-library(ggplot2)
-library(ggrepel)
 library(tibble)
 library(knitr)
+library(kableExtra)
+library(purrr)
+source('report_functions.R')
 
+# colorset = c("#4053d3", "#ddb310", "#b51d14",
+#              "#00beff", "#fb49b0", "#00b25d",
+#              "#693a3a", '#000000')
 
-colorset = c("#4053d3", "#ddb310", "#b51d14",
-             "#00beff", "#fb49b0", "#00b25d",
-             "#693a3a", '#000000')
 cur_sample = params$cur_sample
 ISG = params$ISG
 NFkb = params$NFkb
@@ -45,147 +45,128 @@ Patient ID: `r toString(cur_sample)`
 
 Contact: `r toString(unique(sample_info$Contact))`
 
-```{r}
-require(kableExtra)
-kbl(t(sample_info %>% select(-Contact)), booktabs = T) %>%
-  kable_styling(latex_options = c('hold_position', 'striped'))
+```{r results='asis'}
+sample_info %>% 
+  select(-Contact) %>% 
+  arrange(Visit) %>% 
+  t() %>% 
+  as.data.frame() %>%
+  neat_print_table(col_per_row=3, col_names=NULL)
 ```
 
-\newpage
+\clearpage
 
 # Results (ISG)
 
 ```{r, eval=show_ISG}
 # ISG
-# tmp = ISG %>%
-#   mutate(cur_label = if_else(`Subject ID` == cur_sample, paste0(`Subject ID`, '_', Visit), NA))
-# ggplot(tmp, aes(x = geomean, y = zscore, color = Group)) +
-#   geom_point() +
-#   #geom_line(data = tmp %>% filter(!is.na(`Subject ID`))) +
-#   geom_text_repel(aes(label = label),
-#                   force = 2,
-#                   max.overlaps = 20) +
-#   geom_label_repel(aes(label = cur_label),
-#                    box.padding = 5,
-#                    force = 1.5) +
-#   scale_color_manual(values=colorset)
+# fig 1
 
-tmp <- ISG %>% filter(Group != 'Patients' | `Subject ID` == cur_sample) %>%
-  mutate(label = if_else(`Subject ID` == cur_sample, paste(`Subject ID`, Visit, sep='_'), NA),
-         Group = case_when(
-           `Subject ID` == cur_sample ~ 'Patient',
-           `Subject ID` != cur_sample | is.na(`Subject ID`) ~ Group # in this case for new diagnosis we only need to add to 'Group' 
-         ))
+ISG %>% 
+  filter(!(Group %in% c('Patients', 'Patient IFN stimulation')) | 
+           `Subject ID` == cur_sample) %>%
+  mutate(label = if_else(`Subject ID` == cur_sample, 
+                         paste(`Subject ID`, Visit, sep='_'), 
+                         NA)) %>%
+  score_scatter_plot()
 
-set.seed(42)
-ggplot(tmp, aes(x = Group, y = geomean, color=Group)) +
-  geom_jitter(width = 0.25) +
-  geom_text_repel(aes(label = label),
-                  force = 2,
-                  max.overlaps = 20,
-                  segment.color = 'transparent') +
-  theme_bw()  +
-  theme(legend.position='none',
-        axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) +
-  scale_y_continuous(trans='log1p')
+# fig 2
 
-tmp <- ISG %>% filter(`Subject ID` == cur_sample)
-tab <- rbind(
-  t(tmp[,c('geomean', 'zscore')]),
-  t(tmp[,na.omit(panel_info$`ISG score`)])
-)
-colnames(tab) <- paste0(tmp$`Subject ID`, '_Visit', tmp$Visit)
-tab <- round(tab)
+healthy_range <- (ISG %>% filter(Group=='Healthy control'))$geomean %>% quantile(c(0.01,0.99))
+ISG %>% 
+  prepare_timeline_table(current_sample = cur_sample, sample_info = sample_info) %>%
+  score_timeline_plot(healthy_range = healthy_range)
 
-require(kableExtra)
-kbl(tab, booktabs = T, caption = 'ISG scores and the panel') %>%
-  kable_styling(latex_options = c('hold_position', 'striped'), stripe_index=c(1,2))
 ```
 
-\newpage
+\clearpage
+
+```{r results='asis'}
+# print table for panel and geomean score
+ISG %>% 
+  filter(`Subject ID` == cur_sample) %>% 
+  prepare_score_table(panel = na.omit(panel_info$`ISG score`)) %>%
+  neat_print_table(col_per_row = 4, 
+                   caption = 'ISG scores and the panel', 
+                   stripe_index=c(1,2))
+```
+
+\clearpage
 
 # Results (NFkb)
+
 `r if(!show_NFkb){"not in the panel"}`
 
 ```{r, eval=show_NFkb}
 # NFkb
+# fig 1
+NFkb %>% 
+  filter(!(Group %in% c('Patients', 'Patient IFN stimulation')) | 
+           `Subject ID` == cur_sample) %>%
+  mutate(label = if_else(`Subject ID` == cur_sample, 
+                         paste(`Subject ID`, Visit, sep='_'), 
+                         NA)) %>%
+  score_scatter_plot()
 
-tmp <- NFkb %>% filter(Group != 'Patients' | `Subject ID` == cur_sample) %>%
-  mutate(label = if_else(`Subject ID` == cur_sample, paste(`Subject ID`, Visit, sep='_'), NA),
-         Group = case_when(
-           `Subject ID` == cur_sample ~ 'Patient',
-           `Subject ID` != cur_sample | is.na(`Subject ID`) ~ Group # in this case for new diagnosis we only need to add to 'Group' 
-         ))
+# fig 2
+healthy_range <- (NFkb %>% filter(Group=='Healthy control'))$geomean %>% quantile(c(0.01,0.99))
+NFkb %>% 
+  prepare_timeline_table(current_sample = cur_sample, sample_info = sample_info) %>%
+  score_timeline_plot(healthy_range = healthy_range)
 
-set.seed(42)
-ggplot(tmp, aes(x = Group, y = geomean, color=Group)) +
-  geom_jitter(width = 0.25) +
-  geom_text_repel(aes(label = label),
-                  force = 2,
-                  max.overlaps = 20,
-                  segment.color = 'transparent') +
-  theme_bw()  +
-  theme(legend.position='none',
-        axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) +
-  scale_y_continuous(trans='log1p')
-
-tmp <- NFkb %>% filter(`Subject ID` == cur_sample)
-tab <- rbind(
-  t(tmp[,c('geomean', 'zscore')]),
-  t(tmp[,na.omit(panel_info$`NF-kB score`)])
-)
-colnames(tab) <- paste0(tmp$`Subject ID`, '_Visit', tmp$Visit)
-tab <- round(tab)
-
-require(kableExtra)
-kbl(tab, booktabs = T, caption = 'NFkb scores and the panel') %>%
-  kable_styling(latex_options = c('hold_position', 'striped'), stripe_index=c(1,2))
 
 
 ```
 
-\newpage
+\clearpage
+
+```{r results='asis', eval=show_NFkb}
+NFkb %>% 
+  filter(`Subject ID` == cur_sample) %>% 
+  prepare_score_table(panel = na.omit(panel_info$`NF-kB score`)) %>%
+  neat_print_table(col_per_row = 4, 
+                   caption = 'ISG scores and the panel', 
+                   stripe_index=c(1,2))
+
+```
+
+\clearpage
 
 # Results (IFNg)
+
 `r if(!show_IFNg){"not in the panel"}`
 
 ```{r, eval=show_IFNg}
 # IFNg
+# fig 1
+IFNg %>% 
+  filter(!(Group %in% c('Patients', 'Patient IFN stimulation')) | 
+           `Subject ID` == cur_sample) %>%
+  mutate(label = if_else(`Subject ID` == cur_sample, 
+                         paste(`Subject ID`, Visit, sep='_'), 
+                         NA)) %>%
+  score_scatter_plot()
 
-tmp <- IFNg %>% filter(Group != 'Patients' | `Subject ID` == cur_sample) %>%
-  mutate(label = if_else(`Subject ID` == cur_sample, paste(`Subject ID`, Visit, sep='_'), NA),
-         Group = case_when(
-           `Subject ID` == cur_sample ~ 'Patient',
-           `Subject ID` != cur_sample | is.na(`Subject ID`) ~ Group # in this case for new diagnosis we only need to add to 'Group' 
-         ))
-
-set.seed(42)
-ggplot(tmp, aes(x = Group, y = geomean, color=Group)) +
-  geom_jitter(width = 0.25) +
-  geom_text_repel(aes(label = label),
-                  force = 2,
-                  max.overlaps = 20,
-                  segment.color = 'transparent') +
-  theme_bw()  +
-  theme(legend.position='none',
-        axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) +
-  scale_y_continuous(trans='log1p')
-
-tmp <- IFNg %>% filter(`Subject ID` == cur_sample)
-tab <- rbind(
-  t(tmp[,c('geomean', 'zscore')]),
-  t(tmp[,na.omit(panel_info$`IFN-g Score`)])
-)
-colnames(tab) <- paste0(tmp$`Subject ID`, '_Visit', tmp$Visit)
-tab <- round(tab)
-
-require(kableExtra)
-kbl(tab, booktabs = T, caption = 'IFNg scores and the panel') %>%
-  kable_styling(latex_options = c('hold_position', 'striped'), stripe_index=c(1,2))
+# fig 2
+healthy_range <- (IFNg %>% filter(Group=='Healthy control'))$geomean %>% quantile(c(0.01,0.99))
+IFNg %>% 
+  prepare_timeline_table(current_sample = cur_sample, sample_info = sample_info) %>%
+  score_timeline_plot(healthy_range = healthy_range)
 
 ```
 
-\newpage
+\clearpage
+
+```{r results='asis', eval=show_IFNg}
+IFNg %>%
+  filter(`Subject ID` == cur_sample) %>% 
+  prepare_score_table(panel = na.omit(panel_info$`IFN-g Score`)) %>%
+  neat_print_table(col_per_row = 4, 
+                   caption = 'ISG scores and the panel', 
+                   stripe_index=c(1,2))
+```
+
+\clearpage
 
 # Protocol
 

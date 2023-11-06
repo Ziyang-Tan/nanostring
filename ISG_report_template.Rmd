@@ -1,5 +1,5 @@
 ---
-title: "ISG_report"
+title: "ISG report"
 output: 
   pdf_document:
     latex_engine: xelatex
@@ -43,11 +43,13 @@ show_IFNg = cur_sample %in% IFNg$`Subject ID`
 
 Patient ID: `r toString(cur_sample)`
 
+Personal number: `r toString(unique(sample_info$Personal_number))`
+
 Contact: `r toString(unique(sample_info$Contact))`
 
 ```{r results='asis'}
 sample_info %>% 
-  select(-Contact) %>% 
+  select(-c('Contact', 'Personal_number')) %>% 
   arrange(Visit) %>% 
   t() %>% 
   as.data.frame() %>%
@@ -125,7 +127,7 @@ NFkb %>%
   filter(`Subject ID` == cur_sample) %>% 
   prepare_score_table(panel = na.omit(panel_info$`NF-kB score`)) %>%
   neat_print_table(col_per_row = 4, 
-                   caption = 'ISG scores and the panel', 
+                   caption = 'NFkb scores and the panel', 
                    stripe_index=c(1,2))
 
 ```
@@ -162,7 +164,7 @@ IFNg %>%
   filter(`Subject ID` == cur_sample) %>% 
   prepare_score_table(panel = na.omit(panel_info$`IFN-g Score`)) %>%
   neat_print_table(col_per_row = 4, 
-                   caption = 'ISG scores and the panel', 
+                   caption = 'IFNg scores and the panel', 
                    stripe_index=c(1,2))
 ```
 

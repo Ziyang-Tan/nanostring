@@ -11,6 +11,7 @@ infoDir <- '/Users/tan/OneDrive - KI.SE/ISG nanostring/sample info'
 panelInfoPath <- '/Users/tan/nanostring/doc/New ISG extended panel - for Nanostring.xlsx'
 sampleInfoPath <- '/Users/tan/Library/CloudStorage/OneDrive-KI.SE/ISG nanostring/sample info/sample and physician info.xlsx'
 metaInfoPath <- '/Users/tan/Library/CloudStorage/OneDrive-KI.SE/ISG nanostring/sample info/physician and batch info.xlsx'
+sampleInfo2Path <- '/Users/tan/Library/CloudStorage/OneDrive-KI.SE/ISG nanostring/sample info/ISG IDs.xlsx'
 
 # new panel
 batches <- c(
@@ -25,7 +26,8 @@ sample_info_all <- left_join(
   readxl::read_excel(sampleInfoPath, sheet = 1),
   readxl::read_excel(sampleInfoPath, sheet = 2),
   by = 'Referring physician'
-) %>% mutate(`Referring physician` = if_else(is.na(`Referring physician`), 'unknown', `Referring physician`))
+) %>% mutate(`Referring physician` = if_else(is.na(`Referring physician`), 'unknown', `Referring physician`)) %>%
+  left_join(readxl::read_excel(sampleInfo2Path, sheet = 1) %>% select(`Patient ID`, `Personal_number`), by='Patient ID')
 
 dataList <- lapply(batches, function(x){
   #x = batches[1]
@@ -123,14 +125,12 @@ IFNg <- geomean_score(datCorrectedFiltered, IFNg_panel) %>%
 
 # batch export ISG report
 
-exportDir <- '/Users/tan/Library/CloudStorage/OneDrive-KI.SE/ISG nanostring/ISG reports test'
-for (folder in unique(sample_info_all$`Referring physician`)){
+exportDir <- '/Users/tan/Library/CloudStorage/OneDrive-KI.SE/ISG nanostring/ISG reports'
+for (folder in unique(sample_info_all$`Experiment batch`)){
   expath <- file.path(exportDir, folder)
   dir.create(expath, showWarnings = F)
-  report_samples <- sample_info_all %>% filter(`Referring physician` == folder) %>% select(`Patient ID`) %>% distinct() %>% unlist()
+  report_samples <- sample_info_all %>% filter(`Experiment batch` == folder) %>% select(`Patient ID`) %>% distinct() %>% unlist()
   lapply(report_samples, function(cur_sample){
-    # cur_sample = 'ISG-18'
-    #cur_data <- dat %>% filter(grepl(cur_sample, `Sample info`))
     rmarkdown::render('ISG_report_template.Rmd',
                       params = list(ISG = ISG,
                                     NFkb = NFkb,
@@ -138,7 +138,9 @@ for (folder in unique(sample_info_all$`Referring physician`)){
                                     panel_info = panel_info, 
                                     cur_sample = cur_sample,
                                     sample_info = sample_info_all %>% filter(`Patient ID` == cur_sample)),
-                      output_file = paste0(expath, '/',cur_sample,'.pdf'))
+                      output_file = paste0(expath, '/', cur_sample, '_', 
+                                           sample_info_all %>% filter(`Patient ID` == cur_sample) %>% select(Personal_number) %>% distinct() %>% unlist(), 
+                                           '.pdf'))
   })
 }
 
@@ -151,4 +153,11 @@ rmarkdown::render('ISG_report_template.Rmd',
                                 cur_sample = 'ISG-6',
                                 sample_info = sample_info_all %>% filter(`Patient ID` == 'ISG-6')),
                   output_file = paste0('/Users/tan/Library/CloudStorage/OneDrive-KI.SE/ISG nanostring/ISG reports test/test3.pdf'))
+
+
+
+
+
+
+
 

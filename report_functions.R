@@ -21,7 +21,9 @@ prepare_score_table <- function(df, panel){
   )
   colnames(tab) <- make.unique(paste0(df$`Subject ID`, '_Visit', df$Visit))
   tab <- round(tab)
-  tab <- tab[,gtools::mixedsort(colnames(tab))]
+  if (dim(tab)[2] > 1){
+    tab <- tab[,gtools::mixedsort(colnames(tab))]
+  } # sort column when there's more than 1 column. Otherwise the column name is lost 
   tab <- as.data.frame(tab)
   return(tab)
 }

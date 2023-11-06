@@ -49,9 +49,9 @@ geomean_score <- function(dat, columnSet){
 zscore_score <- function(dat, columnSet){
   hc <- dat %>% filter(control) 
   hcmean <- hc %>%
-    summarise(across(columnSet, mean))
+    summarise(across(all_of(columnSet), mean))
   hcstd <- hc %>%
-    summarise(across(columnSet, sd))
+    summarise(across(all_of(columnSet), sd))
   
   zscore <-  dat %>% 
     select(columnSet) %>% 

@@ -22,38 +22,39 @@ library(tibble)
 library(knitr)
 library(kableExtra)
 library(purrr)
-source('report_functions.R')
+source("report_functions.R")
 
 # colorset = c("#4053d3", "#ddb310", "#b51d14",
 #              "#00beff", "#fb49b0", "#00b25d",
 #              "#693a3a", '#000000')
 
-cur_sample = params$cur_sample
-ISG = params$ISG
-NFkb = params$NFkb
-IFNg = params$IFNg
-panel_info = params$panel_info
-sample_info = params$sample_info
+cur_sample <- params$cur_sample
+ISG <- params$ISG
+NFkb <- params$NFkb
+IFNg <- params$IFNg
+panel_info <- params$panel_info
+sample_info <- params$sample_info
 
-show_ISG = TRUE
-show_NFkb = cur_sample %in% NFkb$`Subject ID`
-show_IFNg = cur_sample %in% IFNg$`Subject ID`
+show_ISG <- TRUE
+show_NFkb <- cur_sample %in% NFkb$`Subject ID`
+show_IFNg <- cur_sample %in% IFNg$`Subject ID`
 
+cur_sample_sets <- c(cur_sample, paste0(cur_sample, "M"), paste0(cur_sample, "F"))
 ```
 
 Patient ID: `r toString(cur_sample)`
 
-Personal number: `r toString(unique(sample_info$Personal_number))`
+Personal number: `r toString(unique(sample_info$Personal_number) %>% na.omit())`
 
 Contact: `r toString(unique(sample_info$Contact))`
 
 ```{r results='asis'}
-sample_info %>% 
-  select(-c('Contact', 'Personal_number')) %>% 
-  arrange(Visit) %>% 
-  t() %>% 
+sample_info %>%
+  select(-c("Contact", "Personal_number")) %>%
+  slice(gtools::mixedorder(Visit)) %>%
+  t() %>%
   as.data.frame() %>%
-  neat_print_table(col_per_row=3, col_names=NULL)
+  neat_print_table(col_per_row = 3, col_names = NULL)
 ```
 
 \clearpage
@@ -64,33 +65,35 @@ sample_info %>%
 # ISG
 # fig 1
 
-ISG %>% 
-  filter(!(Group %in% c('Patients', 'Patient IFN stimulation')) | 
-           `Subject ID` == cur_sample) %>%
-  mutate(label = if_else(`Subject ID` == cur_sample, 
-                         paste(`Subject ID`, Visit, sep='_'), 
-                         NA)) %>%
+ISG %>%
+  filter(!(Group %in% c("Patients", "Patient IFN stimulation")) |
+    `Subject ID` %in% cur_sample_sets) %>%
+  mutate(label = if_else(`Subject ID` %in% cur_sample_sets,
+    paste(`Subject ID`, Visit, sep = "_"),
+    NA
+  )) %>%
   score_scatter_plot()
 
 # fig 2
 
-healthy_range <- (ISG %>% filter(Group=='Healthy control'))$geomean %>% quantile(c(0.01,0.99))
-ISG %>% 
-  prepare_timeline_table(current_sample = cur_sample, sample_info = sample_info) %>%
+healthy_range <- (ISG %>% filter(Group == "Healthy control"))$geomean %>% quantile(c(0.01, 0.99))
+ISG %>%
+  prepare_timeline_table(cur_sample_sets = cur_sample_sets, sample_info = sample_info) %>%
   score_timeline_plot(healthy_range = healthy_range)
-
 ```
 
 \clearpage
 
 ```{r results='asis'}
 # print table for panel and geomean score
-ISG %>% 
-  filter(`Subject ID` == cur_sample) %>% 
+ISG %>%
+  filter(`Subject ID` %in% cur_sample_sets) %>%
   prepare_score_table(panel = na.omit(panel_info$`ISG score`)) %>%
-  neat_print_table(col_per_row = 4, 
-                   caption = 'ISG scores and the panel', 
-                   stripe_index=c(1,2))
+  neat_print_table(
+    col_per_row = 4,
+    caption = "ISG scores and the panel",
+    stripe_index = c(1, 2)
+  )
 ```
 
 \clearpage
@@ -102,34 +105,33 @@ ISG %>%
 ```{r, eval=show_NFkb}
 # NFkb
 # fig 1
-NFkb %>% 
-  filter(!(Group %in% c('Patients', 'Patient IFN stimulation')) | 
-           `Subject ID` == cur_sample) %>%
-  mutate(label = if_else(`Subject ID` == cur_sample, 
-                         paste(`Subject ID`, Visit, sep='_'), 
-                         NA)) %>%
+NFkb %>%
+  filter(!(Group %in% c("Patients", "Patient IFN stimulation")) |
+    `Subject ID` %in% cur_sample_sets) %>%
+  mutate(label = if_else(`Subject ID` %in% cur_sample_sets,
+    paste(`Subject ID`, Visit, sep = "_"),
+    NA
+  )) %>%
   score_scatter_plot()
 
 # fig 2
-healthy_range <- (NFkb %>% filter(Group=='Healthy control'))$geomean %>% quantile(c(0.01,0.99))
-NFkb %>% 
-  prepare_timeline_table(current_sample = cur_sample, sample_info = sample_info) %>%
+healthy_range <- (NFkb %>% filter(Group == "Healthy control"))$geomean %>% quantile(c(0.01, 0.99))
+NFkb %>%
+  prepare_timeline_table(cur_sample_sets = cur_sample_sets, sample_info = sample_info) %>%
   score_timeline_plot(healthy_range = healthy_range)
-
-
-
 ```
 
 \clearpage
 
 ```{r results='asis', eval=show_NFkb}
-NFkb %>% 
-  filter(`Subject ID` == cur_sample) %>% 
+NFkb %>%
+  filter(`Subject ID` %in% cur_sample_sets) %>%
   prepare_score_table(panel = na.omit(panel_info$`NF-kB score`)) %>%
-  neat_print_table(col_per_row = 4, 
-                   caption = 'NFkb scores and the panel', 
-                   stripe_index=c(1,2))
-
+  neat_print_table(
+    col_per_row = 4,
+    caption = "NFkb scores and the panel",
+    stripe_index = c(1, 2)
+  )
 ```
 
 \clearpage
@@ -141,31 +143,33 @@ NFkb %>%
 ```{r, eval=show_IFNg}
 # IFNg
 # fig 1
-IFNg %>% 
-  filter(!(Group %in% c('Patients', 'Patient IFN stimulation')) | 
-           `Subject ID` == cur_sample) %>%
-  mutate(label = if_else(`Subject ID` == cur_sample, 
-                         paste(`Subject ID`, Visit, sep='_'), 
-                         NA)) %>%
+IFNg %>%
+  filter(!(Group %in% c("Patients", "Patient IFN stimulation")) |
+    `Subject ID` %in% cur_sample_sets) %>%
+  mutate(label = if_else(`Subject ID` %in% cur_sample_sets,
+    paste(`Subject ID`, Visit, sep = "_"),
+    NA
+  )) %>%
   score_scatter_plot()
 
 # fig 2
-healthy_range <- (IFNg %>% filter(Group=='Healthy control'))$geomean %>% quantile(c(0.01,0.99))
-IFNg %>% 
-  prepare_timeline_table(current_sample = cur_sample, sample_info = sample_info) %>%
+healthy_range <- (IFNg %>% filter(Group == "Healthy control"))$geomean %>% quantile(c(0.01, 0.99))
+IFNg %>%
+  prepare_timeline_table(cur_sample_sets = cur_sample_sets, sample_info = sample_info) %>%
   score_timeline_plot(healthy_range = healthy_range)
-
 ```
 
 \clearpage
 
 ```{r results='asis', eval=show_IFNg}
 IFNg %>%
-  filter(`Subject ID` == cur_sample) %>% 
+  filter(`Subject ID` %in% cur_sample_sets) %>%
   prepare_score_table(panel = na.omit(panel_info$`IFN-g Score`)) %>%
-  neat_print_table(col_per_row = 4, 
-                   caption = 'IFNg scores and the panel', 
-                   stripe_index=c(1,2))
+  neat_print_table(
+    col_per_row = 4,
+    caption = "IFNg scores and the panel",
+    stripe_index = c(1, 2)
+  )
 ```
 
 \clearpage

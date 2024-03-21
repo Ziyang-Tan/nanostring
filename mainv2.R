@@ -17,7 +17,7 @@ sampleInfo2Path <- '/Users/tan/Library/CloudStorage/OneDrive-KI.SE/ISG nanostrin
 batches <- c(
   'EXP-21-DN5206', 'EXP-21-DN5207','EXP-21-DN5208','EXP-21-DN5209','EXP-21-DN5210','EXP-21-DN5211','EXP-21-DN5212','EXP-21-DN5214',
   'EXP-22-DN5215', 'EXP-22-DN5218', 'EXP-22-DN5219', 'EXP-22-DN5221', 'EXP-22-DN5227', 'EXP-22-run20', 'EXP-22-run21',
-  'EXP-23-DN5230', 'EXP-23-DN5231', 'EXP-23-DN5232', 'EXP-23-DN5233'
+  'EXP-23-DN5230', 'EXP-23-DN5231', 'EXP-23-DN5232', 'EXP-23-DN5233', 'EXP-23-DN5234', 'EXP-23-DN5236'
 )
 
 panel_info <- readxl::read_excel(path = panelInfoPath, sheet = 2) %>% filter(type=='Endogenous')
@@ -102,31 +102,12 @@ NFkb <- geomean_score(datCorrectedFiltered, NFkb_panel) %>%
 IFNg <- geomean_score(datCorrectedFiltered, IFNg_panel) %>%
   add_column(zscore = (zscore_score(datCorrectedFiltered, IFNg_panel))$zscore)
 
-# visualize
-
-# cur_patient = 'ISG-34'
-# df <- ISG %>% filter(!(Group %in% c('Patients', 'Patient IFN stimulation')) | `Subject ID` == cur_patient) %>%
-#   mutate(label = if_else(`Subject ID` == cur_patient, paste(`Subject ID`, Visit, sep='_'), NA),
-#          version = if_else(batch %in% c('EXP-21-DN5206', 'EXP-21-DN5207','EXP-21-DN5208','EXP-21-DN5209',
-#                                         'EXP-21-DN5210','EXP-21-DN5211','EXP-21-DN5212','EXP-21-DN5214'), 'v1', 'v2'))
-# set.seed(42)
-# 
-# ggplot(df, aes(x = Group, y = geomean, color=version)) +
-#   geom_jitter(width = 0.25) +
-#   geom_text_repel(aes(label = label),
-#                   force = 2,
-#                   max.overlaps = 20) +
-#   theme_bw()  +
-#   theme(# legend.position='none',
-#     axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) +
-#   scale_y_continuous(trans='pseudo_log',
-#                      n.breaks=5)
-
 
 # batch export ISG report
 
 exportDir <- '/Users/tan/Library/CloudStorage/OneDrive-KI.SE/ISG nanostring/ISG reports'
 for (folder in unique(sample_info_all$`Experiment batch`)){
+#for (folder in c('EXP-23-DN5234')){
   expath <- file.path(exportDir, folder)
   dir.create(expath, showWarnings = F)
   report_samples <- sample_info_all %>% filter(`Experiment batch` == folder) %>% select(`Patient ID`) %>% distinct() %>% unlist()
@@ -153,11 +134,4 @@ rmarkdown::render('ISG_report_template.Rmd',
                                 cur_sample = 'ISG-6',
                                 sample_info = sample_info_all %>% filter(`Patient ID` == 'ISG-6')),
                   output_file = paste0('/Users/tan/Library/CloudStorage/OneDrive-KI.SE/ISG nanostring/ISG reports test/test3.pdf'))
-
-
-
-
-
-
-
 

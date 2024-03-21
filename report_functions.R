@@ -51,7 +51,7 @@ prepare_timeline_table <- function(df, current_sample, sample_info){
                 select(all_of(c('Date of sampling', 'label'))), 
               by='label') %>%
     mutate(`Date of sampling` = as.Date(`Date of sampling`),
-           connection_group = if_else(Group == 'Patients' & !Visit %in% c('M', 'F'), TRUE, FALSE)) %>%
+           connection_group = if_else(Group == 'Patients' & !grepl('M|F', Visit), TRUE, FALSE)) %>%
     filter(!grepl('stim', Visit)) %>%
     arrange(`Date of sampling`)
   return(d)

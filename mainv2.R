@@ -10,7 +10,7 @@ dataDir <- "/Users/tan/OneDrive - KI.SE/ISG nanostring/data"
 infoDir <- "/Users/tan/OneDrive - KI.SE/ISG nanostring/sample info"
 panelInfoPath <- "/Users/tan/nanostring/doc/New ISG extended panel - for Nanostring.xlsx"
 sampleInfoPath <- "/Users/tan/Library/CloudStorage/OneDrive-KI.SE/ISG nanostring/sample info/sample and physician info.xlsx"
-metaInfoPath <- "/Users/tan/Library/CloudStorage/OneDrive-KI.SE/ISG nanostring/sample info/physician and batch info.xlsx"
+# metaInfoPath <- "/Users/tan/Library/CloudStorage/OneDrive-KI.SE/ISG nanostring/sample info/physician and batch info.xlsx"
 sampleInfo2Path <- "/Users/tan/Library/CloudStorage/OneDrive-KI.SE/ISG nanostring/sample info/ISG IDs.xlsx"
 
 # new panel
@@ -18,7 +18,7 @@ batches <- c(
     "EXP-21-DN5206", "EXP-21-DN5207", "EXP-21-DN5208", "EXP-21-DN5209", "EXP-21-DN5210", "EXP-21-DN5211", "EXP-21-DN5212", "EXP-21-DN5214",
     "EXP-22-DN5215", "EXP-22-DN5218", "EXP-22-DN5219", "EXP-22-DN5221", "EXP-22-DN5227", "EXP-22-run20", "EXP-22-run21", "EXP-23-DN5230",
     "EXP-23-DN5231", "EXP-23-DN5232", "EXP-23-DN5233", "EXP-23-DN5234", "EXP-23-DN5236", "EXP-24-DN5238", "EXP-24-EE2600", "EXP-24-EE2601",
-    "EXP-24-EE2602"
+    "EXP-24-EE2602", "EXP-24-EE2603", "EXP-24-EE2604", "EXP-24-EE2605"
 )
 
 panel_info <- readxl::read_excel(path = panelInfoPath, sheet = 2) %>% filter(type == "Endogenous")
@@ -78,6 +78,9 @@ dat <- rbind(
 )
 
 # with the intrinsic control, batch correction is not needed?
+# write the normalized data table
+write_csv(dat, "data/normalized counts latest EXP-24-EE2605.csv")
+
 
 # load panel info
 ISG_panel <- na.omit(panel_info$`ISG score`)
@@ -101,7 +104,8 @@ IFNg <- geomean_score(datFiltered, IFNg_panel) %>%
 
 exportDir <- "/Users/tan/Library/CloudStorage/OneDrive-KI.SE/ISG nanostring/ISG reports"
 dir.create(exportDir, showWarnings = FALSE)
-for (folder in unique(sample_info_all$`Experiment batch`)) {
+# for (folder in unique(sample_info_all$`Experiment batch`)) {
+for (folder in c("EXP-24-EE2605")) {
     expath <- file.path(exportDir, folder)
     dir.create(expath, showWarnings = FALSE)
     report_families <- sample_info_all %>%
@@ -132,14 +136,15 @@ for (folder in unique(sample_info_all$`Experiment batch`)) {
 }
 
 # test
+cur_sample <- "ISG-6"
 rmarkdown::render("ISG_report_template.Rmd",
     params = list(
         ISG = ISG,
         NFkb = NFkb,
         IFNg = IFNg,
         panel_info = panel_info,
-        cur_sample = "ISG-1",
-        sample_info = sample_info_all %>% filter(`Patient ID` %in% c("ISG-1", "ISG-1M", "ISG-1F"))
+        cur_sample = cur_sample,
+        sample_info = sample_info_all %>% filter(`Patient ID` %in% c(cur_sample, paste0(cur_sample, "M"), paste0(cur_sample, "F")))
     ),
-    output_file = paste0("/Users/tan/Library/CloudStorage/OneDrive-KI.SE/ISG nanostring/ISG reports test/test.pdf")
+    output_file = paste0("/Users/tan/Library/CloudStorage/OneDrive-KI.SE/ISG nanostring/ISG reports test/test3.pdf")
 )

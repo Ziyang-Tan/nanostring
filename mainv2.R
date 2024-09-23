@@ -28,7 +28,10 @@ sample_info_all <- left_join(
     readxl::read_excel(sampleInfoPath, sheet = 2),
     by = "Referring physician"
 ) %>%
-    mutate(`Referring physician` = if_else(is.na(`Referring physician`), "unknown", `Referring physician`)) %>%
+    mutate(
+        `Sample ID` = as.numeric(`Sample ID`),
+        `Referring physician` = if_else(is.na(`Referring physician`), "unknown", `Referring physician`)
+    ) %>%
     left_join(readxl::read_excel(sampleInfo2Path, sheet = 1) %>% select(`Patient ID`, `Personal_number`), by = "Patient ID")
 
 dataList <- lapply(batches, function(x) {
@@ -75,7 +78,25 @@ dat <- dat %>%
 dat <- rbind(
     dat %>% filter(is.na(`Subject ID`)),
     dat %>% filter(!is.na(`Subject ID`)) %>% distinct(`Subject ID`, Visit, .keep_all = TRUE)
-)
+) %>%
+    mutate(`Sample ID` = as.numeric(`Sample ID`))
+
+# use the duplicates in EXP-24-EE2605 instead
+duplicate_id <- dat %>%
+    filter(
+        unique_ID != "NA_NA",
+        Group == "Patients"
+    ) %>%
+    distinct(unique_ID, batch) %>%
+    group_by(unique_ID) %>%
+    tally() %>%
+    filter(n > 1L) %>%
+    pull(unique_ID)
+tmp <- dat %>% filter(unique_ID %in% duplicate_id) %>% select()
+    
+    mutate(`Sample ID` = as.numeric(`Sample ID`))
+
+
 
 # with the intrinsic control, batch correction is not needed?
 # write the normalized data table

@@ -49,12 +49,13 @@ score_scatter_plot <- function(df) {
 prepare_timeline_table <- function(df, cur_sample_sets, sample_info) {
   d <- df %>%
     filter(`Subject ID` %in% cur_sample_sets) %>%
-    mutate(label = paste(`Subject ID`, Visit, sep = "_")) %>%
+    # mutate(label = paste(`Subject ID`, Visit, sep = "_")) %>%
     left_join(
       sample_info %>%
         mutate(label = paste(`Patient ID`, Visit, sep = "_")) %>%
-        select(all_of(c("Date of sampling", "label"))),
-      by = "label"
+        select(all_of(c("Date of sampling", "Sample ID", "label"))),
+      # by = "label"
+      by = "Sample ID"
     ) %>%
     mutate(
       `Date of sampling` = as.Date(`Date of sampling`),
